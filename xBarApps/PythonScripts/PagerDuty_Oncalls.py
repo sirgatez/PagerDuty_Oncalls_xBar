@@ -66,10 +66,13 @@ def get_oncall_from_json(json_data, local_time_fmt, local_time_zone):
     pagerduty_format = "%Y-%m-%dT%H:%M:%SZ"  # PagerDuty time format
 
     for schedule in json_data.json()['oncalls']:
-        if schedule['escalation_level'] == 2:
+        if schedule['schedule']['summary'] not in response or \
+                schedule['escalation_level'] < response[schedule['schedule']['summary']]['level']:
             utc_raw_start = datetime.strptime(schedule["start"], pagerduty_format)
             utc_raw_end = datetime.strptime(schedule["end"], pagerduty_format)
-            response[schedule['schedule']['id']] = {
+            response[schedule['schedule']['summary']] = {
+                'id': schedule['schedule']['id'],
+                'level': schedule['escalation_level'],
                 'team': schedule['schedule']['summary'],
                 'oncall': schedule['user']['summary'],
                 'oncall_url': schedule['user']['html_url'],
@@ -84,13 +87,20 @@ def get_oncall_from_json(json_data, local_time_fmt, local_time_zone):
 
 
 def print_xbar_oncalls(oncall_response, pd_company):
-    for schedule in oncall_response:
-        schedule_url = "https://{0}.pagerduty.com/schedules/{1}".format(pd_company, schedule)
+    sortedkeys = list(oncall_response.keys())
+    sortedkeys.sort()
+    if len(sortedkeys) == 0:
+        print("No oncalls found.")
+    for schedule in sortedkeys:
+        schedule_url = "https://{0}.pagerduty.com/schedules/{1}".format(pd_company, oncall_response[schedule]['id'])
         print("{0} | color='{1}' href='{2}'".format(oncall_response[schedule]['team'], colors['menu'], schedule_url))
-        print("-- {0} | color='{1}' href='{2}'".format(
-            oncall_response[schedule]['oncall'], colors['menu'], oncall_response[schedule]['oncall_url']))
-        print("-- Start: {0} | color='{1}'".format(oncall_response[schedule]['utc_fmt_start'], colors['info']))
-        print("-- End: {0} | color='{1}'".format(oncall_response[schedule]['utc_fmt_end'], colors['info']))
+        print("-- {0} [L{3}]| color='{1}' href='{2}'".format(
+            oncall_response[schedule]['oncall'],
+            colors['menu'],
+            oncall_response[schedule]['oncall_url'],
+            oncall_response[schedule]['level']))
+        print("-- Start: {0} | color='{1}'".format(oncall_response[schedule]['local_fmt_start'], colors['info']))
+        print("-- End: {0} | color='{1}'".format(oncall_response[schedule]['local_fmt_end'], colors['info']))
 
 
 # Define colors globally for easy access.
@@ -98,8 +108,8 @@ colors = {"menu": "#666666", "info": "#00CC00"}
 
 if __name__ == '__main__':
     stale_data = False
-    pagerduty_json = ""
-    pagerduty_json_last = ""
+    pagerduty_json = dict()
+    pagerduty_json_last = dict()
     pagerduty_reply = ""
     error_msg = ""
     pagerduty_last_reply_file = "{0}.lastreply".format(APP)  # Stored in same folder as script

@@ -11,6 +11,7 @@ A simple xBar application to provide a list of curent oncalls from a list of sch
 ## Getting Started
 
 ### Dependencies
+
 * Python 3.x
 
 * One of the following
@@ -21,6 +22,11 @@ A simple xBar application to provide a list of curent oncalls from a list of sch
 * Python Libraries - Minimium:
 	* pytz
 	* requests
+
+### Installing Python Dependancies
+
+pip3 install requests
+pip3 install pytz
 
 ### Installing
 
